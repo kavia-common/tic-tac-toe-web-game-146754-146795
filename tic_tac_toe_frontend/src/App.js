@@ -34,12 +34,47 @@ function calculateWinner(squares) {
   return null;
 }
 
+/**
+ * Renders a chess icon element for a given player value.
+ * X -> knight, O -> queen. Uses Unicode chess symbols with
+ * appropriate ARIA labeling for accessibility.
+ */
+function renderPlayerIcon(value) {
+  if (value === 'X') {
+    // Knight: ♞ (U+265E) black knight
+    return (
+      <span className="mark icon-knight" aria-hidden="true" role="img">
+        ♞
+      </span>
+    );
+  }
+  if (value === 'O') {
+    // Queen: ♛ (U+265B) black queen
+    return (
+      <span className="mark icon-queen" aria-hidden="true" role="img">
+        ♛
+      </span>
+    );
+  }
+  return <span className="mark" aria-hidden="true"></span>;
+}
+
+/**
+ * Returns accessible textual name for player, matching icons.
+ * Used in status and ARIA labels.
+ */
+function playerName(value) {
+  if (value === 'X') return 'Knight';
+  if (value === 'O') return 'Queen';
+  return '';
+}
+
 // PUBLIC_INTERFACE
 export default function App() {
   /**
    * This component renders the complete Tic Tac Toe game, including:
    * - Centered 3x3 grid board
-   * - Two-player interactive gameplay with X and O
+   * - Two-player interactive gameplay with chess icons (Knight for X, Queen for O)
    * - Move history with time travel
    * - Reset/Restart controls
    * - Minimal, modern "Ocean Professional" styling
@@ -80,10 +115,10 @@ export default function App() {
   }
 
   const status = winner
-    ? `Winner: ${winner}`
+    ? `Winner: ${playerName(winner)}`
     : isDraw
     ? 'Draw'
-    : `Next player: ${xIsNext ? 'X' : 'O'}`;
+    : `Next player: ${playerName(xIsNext ? 'X' : 'O')}`;
 
   return (
     <div className="ocean-app">
@@ -148,7 +183,9 @@ function Board({ squares, onSquareClick, winningLine, xIsNext }) {
     const value = squares[i];
     const isWinnerCell = winningLine.includes(i);
     const isActiveTurn = !value && !winningLine.length;
-    const ariaLabel = `Cell ${i + 1}, ${value ? value : 'empty'}`;
+
+    const valueName = value ? playerName(value) : 'empty';
+    const ariaLabel = `Cell ${i + 1}, ${valueName}`;
 
     return (
       <button
@@ -160,13 +197,18 @@ function Board({ squares, onSquareClick, winningLine, xIsNext }) {
         aria-label={ariaLabel}
         disabled={Boolean(value) || Boolean(winningLine.length)}
       >
-        <span className="mark">{value}</span>
+        {renderPlayerIcon(value)}
       </button>
     );
   }
 
+  const nextName = playerName(xIsNext ? 'X' : 'O');
   return (
-    <div className="board" role="grid" aria-label={`Tic Tac Toe board. ${xIsNext ? 'X' : 'O'} to move.`}>
+    <div
+      className="board"
+      role="grid"
+      aria-label={`Tic Tac Toe board. ${nextName} to move.`}
+    >
       {Array.from({ length: 9 }, (_, i) => renderSquare(i))}
     </div>
   );
@@ -176,8 +218,12 @@ function Board({ squares, onSquareClick, winningLine, xIsNext }) {
 function History({ history, currentMove, onJumpTo, isAscending }) {
   /** Lists moves with the ability to time-travel to a previous state. */
   const items = history.map((_, move) => {
-    const description = move === 0 ? 'Go to game start' : `Go to move #${move}`;
+    // Include whose turn is next at that move index for clarity
     const isCurrent = move === currentMove;
+    const nextPlayer = move % 2 === 0 ? 'X' : 'O';
+    const nextIconName = playerName(nextPlayer);
+    const description =
+      move === 0 ? 'Go to game start' : `Go to move #${move} (Next: ${nextIconName})`;
     return (
       <li key={move}>
         <button
